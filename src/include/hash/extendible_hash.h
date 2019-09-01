@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
+#include <mutex>
 
 #include "hash/hash_table.h"
 
@@ -19,9 +20,17 @@ namespace cmudb {
 
 template <typename K, typename V>
 class ExtendibleHash : public HashTable<K, V> {
+
 public:
+  struct Bucket {
+      Bucket():depth(1) {}
+      int depth;
+      std::vector<std::pair<K,V>> entries;
+      std::mutex latch;
+  };
+
   // constructor
-  ExtendibleHash(size_t size);
+  ExtendibleHash(size_t size=64);
   // helper function to generate hash addressing
   size_t HashKey(const K &key);
   // helper function to get global & local depth
@@ -34,6 +43,14 @@ public:
   void Insert(const K &key, const V &value) override;
 
 private:
-  // add your own member variables here
+  int globalDepth;
+  int numBuckets;
+  size_t bucketSize;
+  Bucket** buckets;
+  bool isFull(Bucket& bucket);
+  void doubleBuckets();
+  int BucketIndex(size_t h);
+  void redist(const K &key, Bucket *bucket);
+  std::mutex bucketsLatch;
 };
 } // namespace cmudb
