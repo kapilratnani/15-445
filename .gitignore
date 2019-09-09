@@ -53,6 +53,7 @@ _deps
 ### CMake Patch ###
 # External projects
 *-prefix/
+.vs/*
 
 ### QtCreator ###
 # gitignore for Qt Creator like IDE for pure C/C++ project without Qt
