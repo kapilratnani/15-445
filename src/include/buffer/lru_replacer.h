@@ -11,6 +11,7 @@
 
 #include "buffer/replacer.h"
 #include "hash/extendible_hash.h"
+#include<list>
 
 namespace cmudb {
 
@@ -30,7 +31,9 @@ public:
   size_t Size();
 
 private:
-  // add your member variables here
+	typedef std::list<T> key_access_list;
+	cmudb::ExtendibleHash<T, typename key_access_list::iterator> map;
+	key_access_list access_list;
 };
 
 } // namespace cmudb
