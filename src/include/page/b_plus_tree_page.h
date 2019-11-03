@@ -26,6 +26,8 @@
 
 namespace cmudb {
 
+#define VALID_IDX(idx, min, max) assert(idx >= min && idx < max)
+
 #define MappingType std::pair<KeyType, ValueType>
 
 #define INDEX_TEMPLATE_ARGUMENTS                                               \

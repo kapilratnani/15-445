@@ -64,9 +64,11 @@ namespace cmudb {
       free_list_->pop_front();
     }
     else if(replacer_->Victim(page)) {
+      page->RLatch();
       if (page->is_dirty_) {
         disk_manager_->WritePage(page->GetPageId(), page->GetData());
       }
+      page->RUnlatch();
       page_table_->Remove(page->GetPageId());
       page->ResetMemory();
     }
@@ -115,7 +117,9 @@ namespace cmudb {
   bool BufferPoolManager::FlushPage(page_id_t page_id) { 
     Page* page = nullptr;
     if (page_table_->Find(page_id, page)) {
+      page->RLatch();
       disk_manager_->WritePage(page_id, page->GetData());
+      page->RUnlatch();
       return true;
     }
     return false; 
@@ -132,12 +136,14 @@ namespace cmudb {
   bool BufferPoolManager::DeletePage(page_id_t page_id) { 
     Page* page = nullptr;
     if (page_table_->Find(page_id, page) && page->GetPinCount() == 0) {
+      page->WLatch();
       std::lock_guard<std::mutex> lck(latch_);
       page_table_->Remove(page_id);
       replacer_->Erase(page);
       disk_manager_->DeallocatePage(page_id);
       page->ResetMemory();
       free_list_->push_back(page);
+      page->WUnlatch();
       return true;
     }
     return false; 

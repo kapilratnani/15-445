@@ -21,6 +21,10 @@
 namespace cmudb {
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
+#define BPLUSTREE_LEAF_TYPE BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
+#define BPLUSTREE_INTERNAL_TYPE \
+  BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>
+
 // Main class providing the API for the Interactive B+ Tree.
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTree {
@@ -63,7 +67,8 @@ public:
                                            bool leftMost = false);
 
 private:
-  void StartNewTree(const KeyType &key, const ValueType &value);
+  void StartNewTree(const KeyType &key, const ValueType &value,
+                    Transaction *transaction = nullptr);
 
   bool InsertIntoLeaf(const KeyType &key, const ValueType &value,
                       Transaction *transaction = nullptr);
@@ -88,6 +93,15 @@ private:
   bool AdjustRoot(BPlusTreePage *node);
 
   void UpdateRootPageId(int insert_record = false);
+
+  BPlusTreePage *GetPage(page_id_t page_id) {
+    assert(page_id != INVALID_PAGE_ID);
+    auto *dPage = buffer_pool_manager_->FetchPage(root_page_id_);
+    return reinterpret_cast<BPlusTreePage *>(dPage->GetData()); 
+  }
+
+  B_PLUS_TREE_LEAF_PAGE_TYPE *GetLeafPage(const KeyType &key, 
+    Transaction *transaction = nullptr);
 
   // member variable
   std::string index_name_;
