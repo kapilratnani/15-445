@@ -87,3 +87,4 @@ _deps
 
 
 CMakeSettings.json
+out/*
