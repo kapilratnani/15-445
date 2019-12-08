@@ -84,6 +84,9 @@ TEST(BptTreeTest, UnitTest) {
       tree.InsertFromFile(filename, transaction);
       std::cout << tree.ToString(verbose) << '\n';
       break;
+    case 't':
+      std::cout << tree.ToString(verbose) << '\n';
+      break; 
     case 'q':
       quit = true;
       break;

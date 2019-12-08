@@ -27,6 +27,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id,
       (PAGE_SIZE - sizeof(BPlusTreeInternalPage)) / sizeof(MappingType) - 1;
   // bring it to nearest even size
   size &= ~(1);
+  //
   SetMaxSize(size);
   SetSize(0);
 }
@@ -147,15 +148,15 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(
   assert(recipient != nullptr);
 
   int start = GetSize() / 2;
-  int targetIdx = 0;
+  int targetIdx = recipient->GetSize();
   for (int i = start; i < GetSize(); i++) {
     recipient->array[targetIdx].first = this->array[i].first;
     recipient->array[targetIdx].second = this->array[i].second;
     targetIdx++;
   }
 
-  this->SetSize(start);
   recipient->IncreaseSize(GetSize() - start);
+  this->SetSize(start);
 
   auto newParentPageId = recipient->GetPageId();
   // set parent page id of the transferred pages
@@ -167,6 +168,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(
     btreePage->SetParentPageId(newParentPageId);
     buffer_pool_manager->UnpinPage(page_id, true);
   }
+
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -232,6 +234,13 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(
     BPlusTreeInternalPage *recipient, int index_in_parent,
     BufferPoolManager *buffer_pool_manager) {
   assert(recipient != nullptr);
+  int r_idx = recipient->GetSize();
+  for (int i = 0; i < GetSize(); i++) {
+    recipient->array[r_idx] = this->array[i];
+    r_idx++;
+  }
+  recipient->IncreaseSize(GetSize());
+
 }
 
 INDEX_TEMPLATE_ARGUMENTS void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyAllFrom(
@@ -366,6 +375,7 @@ std::string B_PLUS_TREE_INTERNAL_PAGE_TYPE::ToString(bool verbose) const {
 }
 
 // valuetype for internalNode should be page id_t
+
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t,
                                      GenericComparator<4>>;
 template class BPlusTreeInternalPage<GenericKey<8>, page_id_t,

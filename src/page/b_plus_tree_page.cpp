@@ -38,7 +38,11 @@ namespace cmudb {
    * Helper method to get min page size
    * Generally, min page size == max page size / 2
    */
-  int BPlusTreePage::GetMinSize() const { return this->max_size_ / 2; }
+  int BPlusTreePage::GetMinSize() const { 
+    if (IsLeafPage() && IsRootPage()) return 1;
+
+    return IsRootPage() ? 2 : this->max_size_ / 2; 
+  }
 
   /*
    * Helper methods to get/set parent page id

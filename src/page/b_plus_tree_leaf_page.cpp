@@ -29,6 +29,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id) {
   int size = (PAGE_SIZE - sizeof(BPlusTreeLeafPage)) / sizeof(MappingType) - 1;
   // bring it to nearest even size
   size &= ~(1);
+  //
   SetMaxSize(size);
   SetNextPageId(INVALID_PAGE_ID);
 }
@@ -113,7 +114,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key,
   int idx = this->KeyIndex(key, comparator);
 
   // if found key is equal then replace
-  if (comparator(this->KeyAt(idx), key) == 0) {
+  if (idx < GetSize() && comparator(this->KeyAt(idx), key) == 0) {
     this->array[idx].second = value;
     return GetSize();
   }
@@ -141,15 +142,15 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(
   assert(recipient != nullptr);
 
   int start = GetSize() / 2;
-  int targetIdx = 0;
+  int targetIdx = recipient->GetSize();
   for (int i = start; i < GetSize(); i++) {
     recipient->array[targetIdx].first = this->array[i].first;
     recipient->array[targetIdx].second = this->array[i].second;
     targetIdx++;
   }
 
-  this->SetSize(start);
   recipient->IncreaseSize(GetSize() - start);
+  this->SetSize(start);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -209,7 +210,17 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient, int,
-                                           BufferPoolManager *) {}
+                                           BufferPoolManager *) {
+  assert(recipient != nullptr);
+  int r_idx = recipient->GetSize();
+  for (int i = 0; i < GetSize(); i++) {
+    recipient->array[r_idx] = this->array[i];
+    r_idx++;
+  }
+  recipient->IncreaseSize(GetSize());
+  recipient->SetNextPageId(GetNextPageId());
+}
+
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyAllFrom(MappingType *items, int size) {}
 
@@ -234,7 +245,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveFirstToEndOf(
           BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(
           buffer_pool_manager->FetchPage(GetParentPageId()));
   // get parent index
-  int index_in_parent = parent_page->ValueIndex(this->GetParentPageId());
+  int index_in_parent = parent_page->ValueIndex(this->GetPageId());
 
   int r_size = recipient->GetSize();
   recipient->array[r_size].first = array[0].first;

@@ -21,9 +21,6 @@
 namespace cmudb {
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
-#define BPLUSTREE_LEAF_TYPE BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
-#define BPLUSTREE_INTERNAL_TYPE \
-  BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>
 
 // Main class providing the API for the Interactive B+ Tree.
 INDEX_TEMPLATE_ARGUMENTS
@@ -93,10 +90,12 @@ private:
   bool AdjustRoot(BPlusTreePage *node);
 
   void UpdateRootPageId(int insert_record = false);
+  
+  using BPInternalPage = BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>;
 
   BPlusTreePage *GetPage(page_id_t page_id) {
     assert(page_id != INVALID_PAGE_ID);
-    auto *dPage = buffer_pool_manager_->FetchPage(root_page_id_);
+    auto *dPage = buffer_pool_manager_->FetchPage(page_id);
     return reinterpret_cast<BPlusTreePage *>(dPage->GetData()); 
   }
 

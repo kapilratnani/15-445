@@ -174,6 +174,8 @@ TEST(BPlusTreeTests, DeleteTest1) {
     index_key.SetFromInteger(key);
     tree.Insert(index_key, rid, transaction);
   }
+  
+  std::cout << tree.ToString(true);
 
   std::vector<RID> rids;
   for (auto key : keys) {
@@ -203,6 +205,7 @@ TEST(BPlusTreeTests, DeleteTest1) {
   for (auto key : remove_keys) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
+    std::cout << tree.ToString(true);   
   }
 
   start_key = 2;
@@ -382,6 +385,8 @@ TEST(BPlusTreeTests, ScaleTest) {
   }
 
   EXPECT_EQ(size, 100);
+
+  std::cout << tree.ToString(true);
 
   bpm->UnpinPage(HEADER_PAGE_ID, true);
   delete transaction;

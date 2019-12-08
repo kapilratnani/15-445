@@ -27,8 +27,8 @@ void ExtendibleHash<K, V>::doubleBuckets(){
 
   size_t curSize = this->numBuckets;
   size_t newSize = 2*curSize;
-  LOG_INFO("# Resizing, curSize:%zu, newSize:%zu", curSize, newSize);
-
+  // LOG_INFO("# Resizing, curSize:%zu, newSize:%zu", curSize, newSize);
+  
   Bucket** newBuckets = new Bucket*[newSize];
 
   for(size_t i=0;i<curSize;i++) {
@@ -140,7 +140,7 @@ void ExtendibleHash<K, V>::redist(const K &key, Bucket *bucket) {
   while (fullBucket != nullptr) {
       size_t bucketId = BucketIndex(HashKey(key));
 
-      LOG_INFO("Bucket is Full!");
+      // LOG_INFO("Bucket is Full!");
       if(fullBucket->depth == globalDepth){
         doubleBuckets();
       }
@@ -211,7 +211,7 @@ template <typename K, typename V>
 void ExtendibleHash<K, V>::Insert(const K &key, const V &value) {
   size_t hashKey = this->HashKey(key);
   int bucketId = this->BucketIndex(hashKey);
-  LOG_INFO("# Insert at hash key = %d", bucketId);
+  // LOG_INFO("# Insert at hash key = %d", bucketId);
   Bucket* bucket = this->buckets[bucketId];
 
   lock_guard<mutex> lck(bucket->latch);
