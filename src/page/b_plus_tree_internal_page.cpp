@@ -241,6 +241,16 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(
   }
   recipient->IncreaseSize(GetSize());
 
+  auto newParentPageId = recipient->GetPageId();
+  // set parent page id of the transferred pages
+  for (int i = 0; i < this->GetSize(); i++) {
+    page_id_t page_id = this->ValueAt(i);
+    auto *page = buffer_pool_manager->FetchPage(page_id);
+    assert(page);
+    BPlusTreePage *btreePage = reinterpret_cast<BPlusTreePage *>(page);
+    btreePage->SetParentPageId(newParentPageId);
+    buffer_pool_manager->UnpinPage(page_id, true);
+  }
 }
 
 INDEX_TEMPLATE_ARGUMENTS void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyAllFrom(
@@ -275,12 +285,21 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFirstToEndOf(
   // key will be copied from parent
   recipient->array[r_size].first = key;
   recipient->array[r_size].second = array[0].second;
+  auto transfered_page = array[0].second;
   recipient->IncreaseSize(1);
 
   this->Remove(0);
   // set key at parent
   parent_page->SetKeyAt(index_in_parent, this->KeyAt(0));
   buffer_pool_manager->UnpinPage(parent_page->GetPageId(), true);
+  
+  auto newParentPageId = recipient->GetPageId();
+  // set parent page id of the transferred page
+  auto *page = buffer_pool_manager->FetchPage(transfered_page);
+  assert(page);
+  BPlusTreePage *btreePage = reinterpret_cast<BPlusTreePage *>(page);
+  btreePage->SetParentPageId(newParentPageId);
+  buffer_pool_manager->UnpinPage(transfered_page, true);
 }
 
 INDEX_TEMPLATE_ARGUMENTS void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(
@@ -316,11 +335,20 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(
   recipient->array[1].first = current_parent_key;
   // move the last index's value
   recipient->array[0].second = this->ValueAt(GetSize() - 1);
+  auto transferred_page = this->ValueAt(GetSize() - 1);
   // put last index's key in parent
   parent_page->SetKeyAt(index_in_parent, this->KeyAt(GetSize() - 1));
   // remove from current node
   this->Remove(GetSize() - 1);
   buffer_pool_manager->UnpinPage(parent_page->GetPageId(), true);
+
+  auto newParentPageId = recipient->GetPageId();
+  // set parent page id of the transferred page
+  auto *page = buffer_pool_manager->FetchPage(transferred_page);
+  assert(page);
+  BPlusTreePage *btreePage = reinterpret_cast<BPlusTreePage *>(page);
+  btreePage->SetParentPageId(newParentPageId);
+  buffer_pool_manager->UnpinPage(transferred_page, true);
 }
 
 INDEX_TEMPLATE_ARGUMENTS

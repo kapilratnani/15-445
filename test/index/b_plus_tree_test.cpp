@@ -368,7 +368,8 @@ TEST(BPlusTreeTests, ScaleTest) {
   for (int64_t key = 1; key < remove_scale; key++) {
     remove_keys.push_back(key);
   }
-  // std::random_shuffle(remove_keys.begin(), remove_keys.end());
+  std::random_shuffle(remove_keys.begin(), remove_keys.end());
+ 
   for (auto key : remove_keys) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
@@ -385,8 +386,17 @@ TEST(BPlusTreeTests, ScaleTest) {
   }
 
   EXPECT_EQ(size, 100);
+  // check if all the data is reachable
+  // making sure b+tree is valid
+  for (int key = 9900; key < 10000; key++) {
+    rids.clear();
+    index_key.SetFromInteger(key);
+    tree.GetValue(index_key, rids);
+    EXPECT_EQ(rids.size(), 1);
 
-  std::cout << tree.ToString(true);
+    int64_t value = key & 0xFFFFFFFF;
+    EXPECT_EQ(rids[0].GetSlotNum(), value);
+  }
 
   bpm->UnpinPage(HEADER_PAGE_ID, true);
   delete transaction;

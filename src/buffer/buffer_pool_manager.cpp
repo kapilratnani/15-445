@@ -48,8 +48,6 @@ namespace cmudb {
    * pointer
    */
   Page *BufferPoolManager::FetchPage(page_id_t page_id) { 
-    std::cout << "[" << "f:"<<free_list_->size()<<",rp:"<<replacer_->Size()<< "]" << std::endl;  
-
     Page* page = nullptr;
 
     std::lock_guard<std::mutex> lck(this->latch_);
@@ -58,7 +56,6 @@ namespace cmudb {
       replacer_->Erase(page);
       page->WLatch();
       page->pin_count_++;
-      std::cout << "[" << page_id << ":" << page->pin_count_ << "]"<<std::endl;  
       page->WUnlatch();
       return page;
     }
@@ -95,17 +92,11 @@ namespace cmudb {
    * dirty flag of this page
    */
   bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
-    std::cout << "["
-              << "f:" << free_list_->size() << ",rp:" << replacer_->Size()
-              << "]" << std::endl;  
-
     Page* page = nullptr;
     if (page_table_->Find(page_id, page) && page->GetPinCount() > 0) {
       page->WLatch();
       page->pin_count_--;
 
-      std::cout << "[" << page_id << ":" << page->pin_count_ << "]"
-                << std::endl;
       if (page->pin_count_ == 0) {
         std::lock_guard<std::mutex> lck(latch_);
         replacer_->Insert(page);
@@ -146,10 +137,6 @@ namespace cmudb {
    * the page is found within page table, but pin_count != 0, return false
    */
   bool BufferPoolManager::DeletePage(page_id_t page_id) { 
-    std::cout << "["
-                  << "f:" << free_list_->size() << ",rp:" << replacer_->Size()
-                  << "]" << std::endl;  
-
     Page* page = nullptr;
     if (page_table_->Find(page_id, page) && page->GetPinCount() == 0) {
       page->WLatch();
@@ -174,10 +161,6 @@ namespace cmudb {
    * into page table. return nullptr if all the pages in pool are pinned
    */
   Page *BufferPoolManager::NewPage(page_id_t &page_id) { 
-    std::cout << "["
-                  << "f:" << free_list_->size() << ",rp:" << replacer_->Size()
-                  << "]" << std::endl;  
-
     Page* new_page = nullptr;
     std::lock_guard<std::mutex> lck(this->latch_);
     if (free_list_->size() > 0) {
@@ -196,12 +179,9 @@ namespace cmudb {
       return nullptr;
 
     page_id = new_page->page_id_ = disk_manager_->AllocatePage();
-    std::cout << "[new_page:" << page_id << "]" << std::endl;
     page_table_->Insert(page_id, new_page);
     new_page->pin_count_ = 1;
 
-    std::cout << "[" << page_id << ":" << new_page->pin_count_ << "]"
-              << std::endl;
     return new_page; 
   }
 } // namespace cmudb

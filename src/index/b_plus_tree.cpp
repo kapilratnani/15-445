@@ -359,7 +359,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   if (!node_delete && idx + 1 < parent_page->GetSize()) {
     auto right_page_id = parent_page->ValueAt(idx + 1);
     auto right_page = reinterpret_cast<decltype(node)>(GetPage(right_page_id));
-    if (right_page->GetSize() + node->GetSize() < node->GetMaxSize()) {
+    if (right_page->GetSize() + node->GetSize() < node->GetMaxSize()) {  
       Coalesce(right_page, node, parent_page, 0, transaction);
       // delete right sibling node
       buffer_pool_manager_->UnpinPage(right_page_id, false);
@@ -475,7 +475,6 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
         reinterpret_cast<BPInternalPage *>(old_root_node);
     page_id_t child_page_id = root_page_->ValueAt(0);
     BPlusTreePage* child_page = GetPage(child_page_id);
-   // assert(child_page->IsLeafPage());
     root_page_id_ = child_page_id;
     child_page->SetParentPageId(INVALID_PAGE_ID);
     UpdateRootPageId(false);
