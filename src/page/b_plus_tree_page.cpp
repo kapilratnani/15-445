@@ -26,7 +26,9 @@ namespace cmudb {
    */
   int BPlusTreePage::GetSize() const { return size_; }
   void BPlusTreePage::SetSize(int size) { this->size_ = size; }
-  void BPlusTreePage::IncreaseSize(int amount) { this->size_ += amount; }
+  void BPlusTreePage::IncreaseSize(int amount) { 
+    this->size_ += amount;
+  }
 
   /*
    * Helper methods to get/set max size (capacity) of the page

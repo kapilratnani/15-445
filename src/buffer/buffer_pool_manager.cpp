@@ -54,9 +54,9 @@ namespace cmudb {
 
     if (page_table_->Find(page_id, page)) {
       replacer_->Erase(page);
-      page->WLatch();
+    //  page->WLatch();
       page->pin_count_++;
-      page->WUnlatch();
+      //page->WUnlatch();
       return page;
     }
     
@@ -65,23 +65,23 @@ namespace cmudb {
       free_list_->pop_front();
     }
     else if(replacer_->Victim(page)) {
-      page->RLatch();
+      //page->RLatch();
       if (page->is_dirty_) {
         disk_manager_->WritePage(page->GetPageId(), page->GetData());
       }
-      page->RUnlatch();
+      //page->RUnlatch();
       page_table_->Remove(page->GetPageId());
       page->ResetMemory();
     } else {
       return nullptr;
     }
 
-    page->WLatch();
+    //page->WLatch();
     page->page_id_ = page_id;
     page->pin_count_ = 1;
     page_table_->Insert(page_id, page);
     disk_manager_->ReadPage(page_id, page->data_);
-    page->WUnlatch();
+    //page->WUnlatch();
     return page; 
   }
 
@@ -94,7 +94,7 @@ namespace cmudb {
   bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
     Page* page = nullptr;
     if (page_table_->Find(page_id, page) && page->GetPinCount() > 0) {
-      page->WLatch();
+      //page->WLatch();
       page->pin_count_--;
 
       if (page->pin_count_ == 0) {
@@ -105,7 +105,7 @@ namespace cmudb {
       if (is_dirty)
         page->is_dirty_ = true;
 
-      page->WUnlatch();
+      //page->WUnlatch();
       return true;
     }
     return false;
@@ -120,9 +120,9 @@ namespace cmudb {
   bool BufferPoolManager::FlushPage(page_id_t page_id) { 
     Page* page = nullptr;
     if (page_table_->Find(page_id, page)) {
-      page->RLatch();
+      //page->RLatch();
       disk_manager_->WritePage(page_id, page->GetData());
-      page->RUnlatch();
+      //page->RUnlatch();
       return true;
     }
     return false; 
@@ -139,14 +139,14 @@ namespace cmudb {
   bool BufferPoolManager::DeletePage(page_id_t page_id) { 
     Page* page = nullptr;
     if (page_table_->Find(page_id, page) && page->GetPinCount() == 0) {
-      page->WLatch();
+      //page->WLatch();
       std::lock_guard<std::mutex> lck(latch_);
       page_table_->Remove(page_id);
       replacer_->Erase(page);
       disk_manager_->DeallocatePage(page_id);
       page->ResetMemory();
       free_list_->push_back(page);
-      page->WUnlatch();
+      //page->WUnlatch();
       return true;
     }
     return false; 
