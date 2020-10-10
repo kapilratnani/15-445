@@ -12,7 +12,9 @@ Transaction *TransactionManager::Begin() {
   Transaction *txn = new Transaction(next_txn_id_++);
 
   if (ENABLE_LOGGING) {
-    // TODO: write log and update transaction's prev_lsn here
+    LogRecord beginTxnRecord(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::BEGIN);
+    log_manager_->AppendLogRecord(beginTxnRecord);
+    txn->SetPrevLSN(beginTxnRecord.GetLSN());
   }
 
   return txn;
@@ -34,7 +36,10 @@ void TransactionManager::Commit(Transaction *txn) {
   write_set->clear();
 
   if (ENABLE_LOGGING) {
-    // TODO: write log and update transaction's prev_lsn here
+    LogRecord commitRec(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::COMMIT);
+    log_manager_->AppendLogRecord(commitRec);
+    log_manager_->WaitTillFlushHappens();
+    txn->SetPrevLSN(commitRec.GetLSN());
   }
 
   // release all the lock
@@ -71,7 +76,10 @@ void TransactionManager::Abort(Transaction *txn) {
   write_set->clear();
 
   if (ENABLE_LOGGING) {
-    // TODO: write log and update transaction's prev_lsn here
+    LogRecord abortRec(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::ABORT);
+    log_manager_->AppendLogRecord(abortRec);
+    log_manager_->WaitTillFlushHappens();
+    txn->SetPrevLSN(abortRec.GetLSN());
   }
 
   // release all the lock

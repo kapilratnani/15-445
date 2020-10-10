@@ -80,6 +80,7 @@ TEST(LogManagerTest, RedoTestWithOneTxn) {
   Schema *schema = ParseCreateStatement(createStmt);
 
   RID rid;
+  RID rid1;
   Tuple tuple = ConstructTuple(schema);
   std::cout << "Tuple: " << tuple.ToString(schema) << "\n";
   Tuple tuple1 = ConstructTuple(schema);
@@ -87,6 +88,7 @@ TEST(LogManagerTest, RedoTestWithOneTxn) {
 
   auto val = tuple.GetValue(schema, 4);
   EXPECT_TRUE(test_table->InsertTuple(tuple, rid, txn));
+  EXPECT_TRUE(test_table->InsertTuple(tuple1, rid1, txn));
   storage_engine->transaction_manager_->Commit(txn);
   delete txn;
   delete test_table;

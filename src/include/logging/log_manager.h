@@ -43,8 +43,13 @@ public:
   inline lsn_t GetPersistentLSN() { return persistent_lsn_; }
   inline void SetPersistentLSN(lsn_t lsn) { persistent_lsn_ = lsn; }
   inline char *GetLogBuffer() { return log_buffer_; }
+  void WaitTillFlushHappens();
 
 private:
+  void SwapBuffers();
+  lsn_t LastLsn(char *buf, int size);
+  void BgFSync();
+  void WakeUpFlushThread();
   // TODO: you may add your own member variables
   // also remember to change constructor accordingly
 
@@ -55,14 +60,19 @@ private:
   // log buffer related
   char *log_buffer_;
   char *flush_buffer_;
+  int log_buffer_size_ = 0;
+  int flush_buffer_size = 0;
   // latch to protect shared member variables
   std::mutex latch_;
   // flush thread
   std::thread *flush_thread_;
   // for notifying flush thread
   std::condition_variable cv_;
+  std::condition_variable flushed_;
   // disk manager
   DiskManager *disk_manager_;
+  // 
+  bool flush_thread_on = false;
 };
 
 } // namespace cmudb

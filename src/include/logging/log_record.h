@@ -2,7 +2,7 @@
  * log_record.h
  * For every write opeartion on table page, you should write ahead a
  * corresponding log record.
- * For EACH log record, HEADER is like (5 fields in common, 20 bytes in totoal)
+ * For EACH log record, HEADER is like (5 fields in common, 20 bytes in total)
  *-------------------------------------------------------------
  * | size | LSN | transID | prevLSN | LogType |
  *-------------------------------------------------------------
@@ -143,7 +143,7 @@ private:
   lsn_t prev_lsn_ = INVALID_LSN;
   LogRecordType log_record_type_ = LogRecordType::INVALID;
 
-  // case1: for delete opeartion, delete_tuple_ for UNDO opeartion
+  // case1: for delete operation, delete_tuple_ for UNDO opeartion
   RID delete_rid_;
   Tuple delete_tuple_;
 
