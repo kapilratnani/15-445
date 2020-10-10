@@ -76,7 +76,7 @@ namespace cmudb {
       template <typename N> N* Split(N* node);
 
       template <typename N>
-      bool CoalesceOrRedistribute(N* node, Transaction* transaction = nullptr);
+      bool CoalesceOrRedistribute(N* node, std::unordered_set<page_id_t> &to_delete, Transaction* transaction = nullptr);
 
       template <typename N>
       bool Coalesce(
@@ -96,14 +96,13 @@ namespace cmudb {
         assert(page_id != INVALID_PAGE_ID);
         auto* dPage = buffer_pool_manager_->FetchPage(page_id);
 
-        if (transaction) {
-          if (read_only) {
-            dPage->RLatch();
-          }
-          else {
-            dPage->WLatch();
+        if (read_only) {
+          dPage->RLatch();
+        }
+        else {
+          dPage->WLatch();
+          if(transaction)
             transaction->AddIntoPageSet(dPage);
-          }
         }
         return reinterpret_cast<BPlusTreePage*>(dPage->GetData());
       }
@@ -118,9 +117,8 @@ namespace cmudb {
           dPage->WUnlatch();
         }
         buffer_pool_manager_->UnpinPage(page_id, dirty);
-        buffer_pool_manager_->UnpinPage(page_id, false);
+        buffer_pool_manager_->UnpinPage(page_id, dirty);
       }
-
 
       B_PLUS_TREE_LEAF_PAGE_TYPE* GetLeafPage(const KeyType& key, bool read_only,
         Transaction* transaction = nullptr);

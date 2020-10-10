@@ -209,7 +209,8 @@ namespace cmudb {
       page_id_t new_page_id;
       Page* new_page = buffer_pool_manager_->NewPage(new_page_id);
 
-      if (new_page == nullptr) throw std::bad_alloc();
+      if (new_page == nullptr) 
+        throw std::bad_alloc();
 
       // root page should be an internal page now
       BPInternalPage* new_i_page =
@@ -292,21 +293,24 @@ namespace cmudb {
 
     target_leaf->RemoveAndDeleteRecord(key, comparator_);
 
-    bool shouldRemovePage = CoalesceOrRedistribute(target_leaf, transaction);
+    std::unordered_set<page_id_t> to_delete;
 
-    page_id_t target_page_id = target_leaf->GetPageId();
-    if (shouldRemovePage) {
-      if (transaction) {
-        transaction->AddIntoDeletedPageSet(target_page_id);
-      }
-      else {
-        assert(buffer_pool_manager_->DeletePage(target_page_id));
-      }
+    bool shouldRemovePage = CoalesceOrRedistribute(target_leaf, to_delete, transaction);
+    
+    if (shouldRemovePage || to_delete.size() > 0) {
+      for (auto page_id : to_delete) {
+        if (transaction) {
+          transaction->AddIntoDeletedPageSet(page_id);
+        }
+        else {
+          assert(buffer_pool_manager_->DeletePage(page_id));
+        }
 
-      if (target_page_id == root_page_id_) {
-        root_page_id_ = INVALID_PAGE_ID;
-        UpdateRootPageId(false);
-      }
+        if (page_id == root_page_id_) {
+          root_page_id_ = INVALID_PAGE_ID;
+          UpdateRootPageId(false);
+        }
+      }  
     }
     ReleaseAllTxnPages(transaction);
   }
@@ -320,7 +324,7 @@ namespace cmudb {
    */
   INDEX_TEMPLATE_ARGUMENTS
     template <typename N>
-  bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N* node, Transaction* transaction) {
+  bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N* node, std::unordered_set<page_id_t> &to_delete, Transaction* transaction) {
     if (node->GetSize() >= node->GetMinSize()) return false;
 
     // find a sibling node
@@ -328,7 +332,9 @@ namespace cmudb {
     page_id_t parent_page_id = node->GetParentPageId();
     // if the current page is root page
     if (parent_page_id == INVALID_PAGE_ID) {
-      return AdjustRoot(node);
+      bool parent_delete = AdjustRoot(node);
+      if (parent_delete)
+        to_delete.insert(node->GetPageId());
     }
     // get parent page
     auto* parent_page =
@@ -348,10 +354,10 @@ namespace cmudb {
         // redistribute
         Redistribute(left_page, node, 1);
         buffer_pool_manager_->UnpinPage(parent_page_id, true);
-        buffer_pool_manager_->UnpinPage(left_page_id, true);
+        ReleasePage(left_page_id, false, true, transaction);
         return false;
       }
-      buffer_pool_manager_->UnpinPage(left_page_id, true);
+      ReleasePage(left_page_id, false, true, transaction);
     }
 
     // try right sibling
@@ -361,10 +367,10 @@ namespace cmudb {
       if (right_page->GetSize() > node->GetMinSize()) {
         Redistribute(right_page, node, 0);
         buffer_pool_manager_->UnpinPage(parent_page_id, true);
-        buffer_pool_manager_->UnpinPage(right_page_id, true);
+        ReleasePage(right_page_id, false, true, transaction);
         return false;
       }
-      buffer_pool_manager_->UnpinPage(right_page_id, true);
+      ReleasePage(right_page_id, false, true, transaction);
     }
 
     // now try merging
@@ -387,11 +393,12 @@ namespace cmudb {
       auto left_page = reinterpret_cast<decltype(node)>(GetPage(left_page_id, false, transaction));
       if (left_page->GetSize() + node->GetSize() < node->GetMaxSize()) {
         Coalesce(left_page, node, parent_page, 1, transaction);
-        buffer_pool_manager_->UnpinPage(left_page_id, true);
+        ReleasePage(left_page_id, false, true, transaction);
+        to_delete.insert(node->GetPageId());
         node_delete = true;
       }
       else {
-        buffer_pool_manager_->UnpinPage(left_page_id, true);
+        ReleasePage(left_page_id, false, true, transaction);
       }
     }
 
@@ -405,19 +412,19 @@ namespace cmudb {
       if (right_page->GetSize() + node->GetSize() < node->GetMaxSize()) {
         Coalesce(right_page, node, parent_page, 0, transaction);
         // delete right sibling node
-        buffer_pool_manager_->UnpinPage(right_page_id, false);
-        assert(buffer_pool_manager_->DeletePage(right_page_id));
+        ReleasePage(right_page_id, false, true, transaction);
+        to_delete.insert(right_page_id);
       }
       else {
-        buffer_pool_manager_->UnpinPage(right_page_id, false);
+        ReleasePage(right_page_id, false, true, transaction);
       }
     }
 
-    auto parent_del = CoalesceOrRedistribute(parent_page, transaction);
+    auto parent_del = CoalesceOrRedistribute(parent_page, to_delete, transaction);
     buffer_pool_manager_->UnpinPage(parent_page->GetPageId(), true);
 
     if (parent_del) {
-      assert(buffer_pool_manager_->DeletePage(parent_page->GetPageId()));
+      to_delete.insert(parent_page->GetPageId());
     }
 
     return node_delete;
@@ -568,7 +575,8 @@ namespace cmudb {
   INDEX_TEMPLATE_ARGUMENTS
     INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() {
     assert(root_page_id_ != INVALID_PAGE_ID);
-    auto cur_page = GetPage(root_page_id_, true);
+    auto* dPage = buffer_pool_manager_->FetchPage(root_page_id_);
+    auto cur_page = reinterpret_cast<BPlusTreePage*>(dPage->GetData());
     while (!cur_page->IsLeafPage()) {
       BPInternalPage* internal_page =
         reinterpret_cast<BPInternalPage*>(cur_page);
@@ -590,7 +598,7 @@ namespace cmudb {
     B_PLUS_TREE_LEAF_PAGE_TYPE* leaf_page = GetLeafPage(key, true);
     assert(leaf_page != nullptr);
     int start_idx = leaf_page->KeyIndex(key, comparator_);
-    buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), false);
+    ReleasePage(leaf_page->GetPageId(), true, false);
     return INDEXITERATOR_TYPE(leaf_page->GetPageId(), start_idx, *buffer_pool_manager_);
   }
 
