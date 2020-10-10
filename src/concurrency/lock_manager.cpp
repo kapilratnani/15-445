@@ -122,7 +122,7 @@ namespace cmudb {
     std::unique_lock<std::mutex> lck(mtx);
 
     auto txn_state = txn->GetState();
-    if (strict_2PL_) {
+    if (strict_2PL_ && !upgrading) {
       if (!(txn_state == TransactionState::COMMITTED || txn_state == TransactionState::ABORTED))
         return false;
     }
